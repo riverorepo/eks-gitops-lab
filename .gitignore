@@ -1,0 +1,20 @@
+# Terraform: state can contain secrets in plaintext, never commit it
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+# tfvars often hold account IDs / secrets
+*.tfvars
+
+# Credentials / kubeconfig
+*.pem
+*.key
+kubeconfig*
+.env
+
+# Claude local settings (machine-specific)
+.claude/settings.local.json
+
+# OS noise
+.DS_Store
+Thumbs.db
