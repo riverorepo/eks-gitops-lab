@@ -1,0 +1,321 @@
+<title>Docker to EKS GitOps Pipeline</title>
+<style>
+  :root {
+    --bg:        #0b1220;
+    --panel:     #131d30;
+    --panel-2:   #0f1727;
+    --ink:       #e6edf7;
+    --muted:     #8ba0bd;
+    --faint:     #55688a;
+    --line:      #24334d;
+    --grid:      rgba(56,189,248,.05);
+    --accent:    #38bdf8;
+    --accent-dim:#1d5f80;
+    --done:      #3fb950;
+    --now:       #f5b642;
+    --tf:        #b98bf0;
+    --mono: "Cascadia Code","Cascadia Mono",Consolas,"SF Mono",ui-monospace,monospace;
+    --sans: "Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:#eef2f8; --panel:#ffffff; --panel-2:#f4f7fb; --ink:#12233d;
+      --muted:#4a5f7d; --faint:#8598b4; --line:#d4deec; --grid:rgba(37,99,235,.045);
+      --accent:#0f7fb8; --accent-dim:#9fd3ec; --done:#1a8a3c; --now:#b5791a; --tf:#7B42BC;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#0b1220; --panel:#131d30; --panel-2:#0f1727; --ink:#e6edf7; --muted:#8ba0bd;
+    --faint:#55688a; --line:#24334d; --grid:rgba(56,189,248,.05); --accent:#38bdf8;
+    --accent-dim:#1d5f80; --done:#3fb950; --now:#f5b642; --tf:#b98bf0;
+  }
+  :root[data-theme="light"] {
+    --bg:#eef2f8; --panel:#ffffff; --panel-2:#f4f7fb; --ink:#12233d; --muted:#4a5f7d;
+    --faint:#8598b4; --line:#d4deec; --grid:rgba(37,99,235,.045); --accent:#0f7fb8;
+    --accent-dim:#9fd3ec; --done:#1a8a3c; --now:#b5791a; --tf:#7B42BC;
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--sans); line-height:1.55;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .wrap { max-width:1120px; margin:0 auto; padding:48px 24px 80px; }
+
+  header { margin-bottom:40px; }
+  .eyebrow {
+    font-family:var(--mono); font-size:12px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 10px;
+  }
+  h1 {
+    font-size:clamp(28px,4.4vw,42px); line-height:1.08; margin:0 0 12px;
+    font-weight:700; letter-spacing:-.01em; text-wrap:balance;
+  }
+  .lede { color:var(--muted); max-width:60ch; margin:0; font-size:16px; }
+
+  .legend { display:flex; flex-wrap:wrap; gap:18px; margin:22px 0 0; }
+  .legend span { display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12.5px; color:var(--muted); }
+  .dot { width:10px; height:10px; border-radius:50%; flex:none; box-shadow:0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); }
+  .dot.done { color:var(--done); background:var(--done); }
+  .dot.now  { color:var(--now);  background:var(--now); }
+  .dot.next { color:var(--faint);background:var(--faint); }
+
+  h2.section {
+    font-family:var(--mono); font-size:13px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--faint); margin:56px 0 20px; padding-bottom:10px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:10px;
+  }
+  h2.section::before { content:"//"; color:var(--accent); }
+
+  /* ---- pipeline ---- */
+  .pipe-scroll { overflow-x:auto; padding:4px 2px 14px; }
+  .pipe { display:flex; align-items:stretch; gap:0; min-width:920px; }
+  .stage {
+    flex:1 1 0; background:var(--panel); border:1px solid var(--line);
+    border-radius:14px; padding:18px 16px 16px; position:relative;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .stage.done { border-top:3px solid var(--done); }
+  .stage.now  { border-top:3px solid var(--now); box-shadow:0 0 0 1px var(--now), 0 12px 30px -14px color-mix(in srgb,var(--now) 60%, transparent); }
+  .stage.next { border-top:3px solid var(--faint); opacity:.9; }
+
+  .stage .n { font-family:var(--mono); font-size:12px; color:var(--faint); }
+  .stage h3 { margin:0; font-size:16px; letter-spacing:-.01em; }
+  .stage .desc { font-size:13px; color:var(--muted); margin:0; }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:auto; }
+  .tag {
+    font-family:var(--mono); font-size:11px; color:var(--accent);
+    background:color-mix(in srgb,var(--accent) 12%, transparent);
+    border:1px solid var(--accent-dim); padding:2px 7px; border-radius:6px;
+  }
+  .pill {
+    position:absolute; top:14px; right:14px; font-family:var(--mono); font-size:10px;
+    letter-spacing:.08em; text-transform:uppercase; padding:3px 8px; border-radius:999px; font-weight:600;
+  }
+  .pill.done { color:var(--done); background:color-mix(in srgb,var(--done) 15%, transparent); }
+  .pill.now  { color:var(--now);  background:color-mix(in srgb,var(--now) 18%, transparent); }
+  .pill.next { color:var(--faint);background:color-mix(in srgb,var(--faint) 15%, transparent); }
+
+  .arrow {
+    flex:0 0 62px; align-self:center; position:relative; height:2px;
+    background:linear-gradient(90deg,var(--accent-dim),var(--accent)); margin:0 -1px;
+  }
+  .arrow::after {
+    content:""; position:absolute; right:-1px; top:50%; transform:translateY(-50%);
+    border-left:8px solid var(--accent); border-top:6px solid transparent; border-bottom:6px solid transparent;
+  }
+  .arrow span {
+    position:absolute; top:-22px; left:50%; transform:translateX(-50%); white-space:nowrap;
+    font-family:var(--mono); font-size:10.5px; color:var(--accent);
+  }
+
+  /* ---- OIDC handshake ---- */
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:26px; }
+  .handshake { display:grid; grid-template-columns:1fr auto 1fr; gap:0; align-items:center; }
+  .node {
+    background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:16px 18px;
+  }
+  .node .lbl { font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); margin:0 0 4px; }
+  .node .name { font-size:16px; font-weight:600; margin:0 0 8px; }
+  .node ul { margin:6px 0 0; padding-left:16px; }
+  .node li { font-family:var(--mono); font-size:12px; color:var(--muted); margin:3px 0; }
+  .node li b { color:var(--ink); font-weight:600; }
+
+  .flow-col { padding:0 18px; display:flex; flex-direction:column; gap:16px; align-items:center; }
+  .flow {
+    position:relative; width:100%; min-width:150px; text-align:center;
+    font-family:var(--mono); font-size:11.5px; color:var(--muted);
+  }
+  .flow .bar { height:2px; background:var(--line); position:relative; margin-top:6px; }
+  .flow.rtl .bar { background:linear-gradient(90deg,var(--done),color-mix(in srgb,var(--done) 30%,transparent)); }
+  .flow.ltr .bar { background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 30%,transparent),var(--accent)); }
+  .flow.ltr .bar::after { content:""; position:absolute; right:0; top:50%; transform:translateY(-50%); border-left:7px solid var(--accent); border-top:5px solid transparent; border-bottom:5px solid transparent; }
+  .flow.rtl .bar::before { content:""; position:absolute; left:0; top:50%; transform:translateY(-50%); border-right:7px solid var(--done); border-top:5px solid transparent; border-bottom:5px solid transparent; }
+  .flow .step { font-size:10px; color:var(--accent); letter-spacing:.08em; }
+  .flow.rtl .step { color:var(--done); }
+
+  .noSecret {
+    margin-top:22px; display:flex; align-items:center; gap:12px; justify-content:center;
+    font-family:var(--mono); font-size:13px; color:var(--done);
+    background:color-mix(in srgb,var(--done) 9%, transparent); border:1px dashed color-mix(in srgb,var(--done) 45%,transparent);
+    padding:12px; border-radius:10px;
+  }
+
+  /* ---- terraform inventory ---- */
+  .tf-head { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+  .tf-cmd {
+    font-family:var(--mono); font-size:14px; color:var(--ink);
+    background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:8px 12px;
+  }
+  .tf-cmd b { color:var(--tf); }
+  .tf-note { font-family:var(--mono); font-size:12px; color:var(--muted); }
+  .res-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px; }
+  .res {
+    display:flex; gap:12px; align-items:flex-start; background:var(--panel); border:1px solid var(--line);
+    border-left:3px solid var(--tf); border-radius:10px; padding:14px 15px;
+  }
+  .res .plus { font-family:var(--mono); color:var(--done); font-weight:700; font-size:15px; line-height:1.3; }
+  .res .r-name { font-family:var(--mono); font-size:13px; color:var(--ink); word-break:break-all; }
+  .res .r-what { font-size:12.5px; color:var(--muted); margin-top:3px; }
+  .res.out { border-left-color:var(--accent); }
+  .res.out .plus { color:var(--accent); }
+
+  .foot { margin-top:44px; color:var(--faint); font-family:var(--mono); font-size:12px; text-align:center; }
+
+  @media (max-width:760px) {
+    .handshake { grid-template-columns:1fr; }
+    .flow-col { padding:20px 0; flex-direction:row; }
+    .flow .bar { transform:rotate(90deg); width:40px; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">GitOps Lab &middot; Stage Map</p>
+    <h1>Docker &rarr; ECR &rarr; EKS: the GitOps pipeline</h1>
+    <p class="lede">One image, built once, promoted through the pipeline. No passwords stored anywhere. This map is the whole journey; right now we are about to lay the AWS foundation.</p>
+    <div class="legend">
+      <span><i class="dot done"></i> Built</span>
+      <span><i class="dot now"></i> Applying now</span>
+      <span><i class="dot next"></i> Coming next</span>
+    </div>
+  </header>
+
+  <h2 class="section">The pipeline, end to end</h2>
+  <div class="pipe-scroll">
+    <div class="pipe">
+
+      <div class="stage done">
+        <span class="pill done">Built</span>
+        <span class="n">STAGE 1</span>
+        <h3>Source &amp; Image</h3>
+        <p class="desc">A tiny Python server that prints its own hostname, wrapped in a Dockerfile.</p>
+        <div class="tags"><span class="tag">docker/app.py</span><span class="tag">Dockerfile</span></div>
+      </div>
+
+      <div class="arrow"><span>docker build</span></div>
+
+      <div class="stage now">
+        <span class="pill now">Now</span>
+        <span class="n">STAGE 2</span>
+        <h3>AWS Foundation</h3>
+        <p class="desc">A private registry to hold the image, and a trust so CI can push without secrets.</p>
+        <div class="tags"><span class="tag">ECR</span><span class="tag">IAM OIDC</span><span class="tag">terraform</span></div>
+      </div>
+
+      <div class="arrow"><span>terraform apply</span></div>
+
+      <div class="stage next">
+        <span class="pill next">Next</span>
+        <span class="n">STAGE 3</span>
+        <h3>CI: GitHub Actions</h3>
+        <p class="desc">On push: build, assume the role via OIDC, push <code>llm-app:&lt;sha&gt;</code>.</p>
+        <div class="tags"><span class="tag">workflow.yml</span><span class="tag">push :sha</span></div>
+      </div>
+
+      <div class="arrow"><span>push image</span></div>
+
+      <div class="stage next">
+        <span class="pill next">Next</span>
+        <span class="n">STAGE 4</span>
+        <h3>EKS Cluster</h3>
+        <p class="desc">A managed Kubernetes cluster: the place the app actually runs.</p>
+        <div class="tags"><span class="tag">EKS</span><span class="tag">nodes</span></div>
+      </div>
+
+      <div class="arrow"><span>sync</span></div>
+
+      <div class="stage next">
+        <span class="pill next">Next</span>
+        <span class="n">STAGE 5</span>
+        <h3>ArgoCD GitOps</h3>
+        <p class="desc">Watches the git repo and makes the cluster match it. Git is the source of truth.</p>
+        <div class="tags"><span class="tag">ArgoCD</span><span class="tag">auto-sync</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <h2 class="section">Zoom in &mdash; the OIDC handshake (Stage 2's payoff)</h2>
+  <div class="card">
+    <div class="handshake">
+      <div class="node">
+        <p class="lbl">Client</p>
+        <p class="name">GitHub Actions runner</p>
+        <ul>
+          <li>repo <b>riverorepo/eks-gitops-lab</b></li>
+          <li>presents a signed token:</li>
+          <li>&nbsp;&nbsp;aud = <b>sts.amazonaws.com</b></li>
+          <li>&nbsp;&nbsp;sub = <b>repo:...:*</b></li>
+        </ul>
+      </div>
+
+      <div class="flow-col">
+        <div class="flow ltr">
+          <span class="step">1 &middot; request</span><br>OIDC token
+          <div class="bar"></div>
+        </div>
+        <div class="flow rtl">
+          <span class="step">2 &middot; grant</span><br>temp creds (~1h)
+          <div class="bar"></div>
+        </div>
+      </div>
+
+      <div class="node">
+        <p class="lbl">AWS STS</p>
+        <p class="name">Checks two gates</p>
+        <ul>
+          <li><b>Provider</b> trusts GitHub's issuer</li>
+          <li><b>Role</b> trust policy matches:</li>
+          <li>&nbsp;&nbsp;aud == sts.amazonaws.com</li>
+          <li>&nbsp;&nbsp;sub LIKE repo:...:*</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="noSecret">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      No access keys. No secrets in GitHub. The role can push to <b style="color:var(--ink)">llm-app</b> and nothing else.
+    </div>
+  </div>
+
+  <h2 class="section">What <code>terraform apply</code> will create</h2>
+  <div class="card">
+    <div class="tf-head">
+      <span class="tf-cmd">terraform <b>apply</b></span>
+      <span class="tf-note">Plan: 4 to add, 0 to change, 0 to destroy &middot; region us-east-1</span>
+    </div>
+    <div class="res-grid">
+      <div class="res">
+        <span class="plus">+</span>
+        <div><div class="r-name">aws_ecr_repository.app</div><div class="r-what">Private registry "llm-app". Immutable tags, scan on push.</div></div>
+      </div>
+      <div class="res">
+        <span class="plus">+</span>
+        <div><div class="r-name">aws_iam_openid_connect_provider.github</div><div class="r-what">Tells AWS to trust GitHub's token issuer.</div></div>
+      </div>
+      <div class="res">
+        <span class="plus">+</span>
+        <div><div class="r-name">aws_iam_role.github_actions</div><div class="r-what">The role CI assumes. Trust scoped to your repo's sub.</div></div>
+      </div>
+      <div class="res">
+        <span class="plus">+</span>
+        <div><div class="r-name">aws_iam_role_policy.ecr_push</div><div class="r-what">What the role may do: push layers to that one ECR repo.</div></div>
+      </div>
+      <div class="res out">
+        <span class="plus">&rarr;</span>
+        <div><div class="r-name">output: ecr_repository_url</div><div class="r-what">The address you docker push to.</div></div>
+      </div>
+      <div class="res out">
+        <span class="plus">&rarr;</span>
+        <div><div class="r-name">output: github_actions_role_arn</div><div class="r-what">Paste into the Stage 3 workflow.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot">learning/kubernetes &middot; verify the repo name in the OIDC sub matches your real GitHub repo before apply</p>
+</div>
