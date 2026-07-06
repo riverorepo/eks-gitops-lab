@@ -14,7 +14,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
         self.end_headers()
-        message = f"Hello from {socket.gethostname()}\n"
+        message = f"Hello AI ENGINEERS! From {socket.gethostname()}\n"
         self.wfile.write(message.encode())
 
 with socketserver.TCPServer(("", PORT), Handler) as httpd:
