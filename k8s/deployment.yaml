@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: llm-app
+  template:
+    metadata:
+      labels:
+        app: llm-app
+    spec:
+      containers:
+        - name: llm-app
+          image: 241356815757.dkr.ecr.us-east-1.amazonaws.com/llm-app:488194c8b88266abefc29496a08d4dec84a99a51
+          ports:
+            - containerPort: 8080

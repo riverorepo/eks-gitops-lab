@@ -1,0 +1,167 @@
+<title>AWS Architecture — Stages 1-3</title>
+<style>
+  :root {
+    --canvas:#ffffff; --ink:#16202e; --muted:#5c6b7a; --faint:#93a1b0;
+    --aws-line:#232f3e; --region:#00a4a6; --group:#7d8998; --panel:#f7f9fb;
+    --sans:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;
+    --mono:Consolas,"Cascadia Mono",ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --canvas:#0f1722; --ink:#e7edf4; --muted:#9fb0c2; --faint:#5f7183;
+            --aws-line:#c9d4e0; --region:#2bd4d6; --group:#7d8b9c; --panel:#16202e; }
+  }
+  :root[data-theme="light"] { --canvas:#ffffff; --ink:#16202e; --muted:#5c6b7a; --faint:#93a1b0;
+    --aws-line:#232f3e; --region:#00a4a6; --group:#7d8998; --panel:#f7f9fb; }
+  :root[data-theme="dark"] { --canvas:#0f1722; --ink:#e7edf4; --muted:#9fb0c2; --faint:#5f7183;
+    --aws-line:#c9d4e0; --region:#2bd4d6; --group:#7d8b9c; --panel:#16202e; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--canvas); color:var(--ink); font-family:var(--sans); }
+  .wrap { max-width:1160px; margin:0 auto; padding:40px 22px 64px; }
+  .eyebrow { font-family:var(--mono); font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#ed7100; margin:0 0 8px; }
+  h1 { font-size:clamp(24px,3.6vw,34px); margin:0 0 8px; letter-spacing:-.01em; }
+  .lede { color:var(--muted); margin:0 0 26px; max-width:64ch; }
+
+  .frame { overflow-x:auto; border:1px solid color-mix(in srgb,var(--aws-line) 22%,transparent); border-radius:12px; background:var(--panel); }
+  svg { display:block; min-width:1000px; width:100%; height:auto; }
+
+  svg .lbl   { fill:var(--ink);   font-family:var(--sans); }
+  svg .sub   { fill:var(--muted); font-family:var(--mono); }
+  svg .cap   { fill:var(--ink);   font-family:var(--sans); font-weight:600; }
+  svg .grp   { fill:var(--group); font-family:var(--sans); font-weight:600; letter-spacing:.02em; }
+  svg .glyph { fill:#fff; }
+  svg .gline { stroke:#fff; fill:none; }
+  svg .flow  { stroke:var(--ink); }
+  svg .flowd { stroke:var(--faint); stroke-dasharray:4 4; }
+  svg .fnum  { fill:#fff; font-family:var(--sans); font-weight:700; }
+
+  .steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin-top:28px; }
+  .step { background:var(--panel); border:1px solid color-mix(in srgb,var(--aws-line) 16%,transparent); border-left:3px solid #ed7100; border-radius:9px; padding:13px 15px; }
+  .step b { font-family:var(--mono); font-size:12px; color:#ed7100; }
+  .step p { margin:5px 0 0; font-size:13.5px; color:var(--muted); line-height:1.5; }
+  .step p code { font-family:var(--mono); color:var(--ink); }
+  .foot { margin-top:26px; font-family:var(--mono); font-size:12px; color:var(--faint); }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Amazon Web Services &middot; us-east-1</p>
+  <h1>What exists so far — Stages 1&ndash;3</h1>
+  <p class="lede">A passwordless CI path: code on GitHub, GitHub Actions assumes an IAM role by OIDC, and pushes a container image to a private ECR registry. No long-lived AWS keys are stored anywhere.</p>
+
+  <div class="frame">
+  <svg viewBox="0 0 1100 700" role="img" aria-label="AWS architecture diagram of stages 1 to 3">
+    <defs>
+      <linearGradient id="gDev" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b6673"/><stop offset="1" stop-color="#3b4350"/></linearGradient>
+      <linearGradient id="gRepo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b3138"/><stop offset="1" stop-color="#191d22"/></linearGradient>
+      <linearGradient id="gAct" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f8bff"/><stop offset="1" stop-color="#1a6fe0"/></linearGradient>
+      <linearGradient id="gIam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8455d"/><stop offset="1" stop-color="#c21f3a"/></linearGradient>
+      <linearGradient id="gEcr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f5872f"/><stop offset="1" stop-color="#d45b00"/></linearGradient>
+      <marker id="ar--head" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="var(--ink)"/></marker>
+      <marker id="ar--headd" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="var(--faint)"/></marker>
+    </defs>
+
+    <!-- ============ GitHub (external) ============ -->
+    <rect x="40" y="95" width="280" height="395" rx="10" fill="none" stroke="var(--group)" stroke-width="1.5"/>
+    <path d="M63 118 a6 6 0 0 1 0 -12 a6 6 0 0 1 5.6 8.1 c-.4 1-.4 2 .6 2.4" fill="none" stroke="var(--group)" stroke-width="1.6"/>
+    <text class="grp" x="78" y="118" font-size="14">GitHub &middot; riverorepo/eks-gitops-lab</text>
+
+    <!-- developer -->
+    <rect x="148" y="128" width="64" height="64" rx="10" fill="url(#gDev)"/>
+    <circle class="glyph" cx="180" cy="150" r="8"/>
+    <path class="glyph" d="M164 178 a16 16 0 0 1 32 0 z"/>
+    <text class="cap" x="180" y="210" font-size="13" text-anchor="middle">Developer</text>
+
+    <line class="flow" x1="180" y1="216" x2="180" y2="250" stroke-width="1.8" marker-end="url(#ar--head)"/>
+    <text class="sub" x="188" y="238" font-size="10.5">git push</text>
+
+    <!-- repo -->
+    <rect x="148" y="254" width="64" height="64" rx="10" fill="url(#gRepo)"/>
+    <circle class="gline" cx="171" cy="277" r="4" stroke-width="2"/>
+    <circle class="gline" cx="189" cy="295" r="4" stroke-width="2"/>
+    <path class="gline" d="M171 281 v6 a4 4 0 0 0 4 4 h10" stroke-width="2"/>
+    <text class="cap" x="180" y="336" font-size="13" text-anchor="middle">Git repo (main)</text>
+
+    <line class="flow" x1="180" y1="342" x2="180" y2="376" stroke-width="1.8" marker-end="url(#ar--head)"/>
+    <text class="sub" x="188" y="364" font-size="10.5">on push</text>
+
+    <!-- actions -->
+    <rect x="148" y="380" width="64" height="64" rx="10" fill="url(#gAct)"/>
+    <circle class="gline" cx="180" cy="412" r="13" stroke-width="2.4"/>
+    <circle class="glyph" cx="180" cy="399" r="3"/>
+    <circle class="glyph" cx="192" cy="419" r="3"/>
+    <path class="gline" d="M180 412 l9 5" stroke-width="2"/>
+    <text class="cap" x="180" y="462" font-size="13" text-anchor="middle">GitHub Actions</text>
+
+    <!-- ============ AWS Cloud ============ -->
+    <rect x="430" y="70" width="640" height="600" rx="10" fill="none" stroke="var(--aws-line)" stroke-width="2"/>
+    <path d="M452 96 c4 3 10 3 14 0 M452 100 c4 4 10 4 14 0" stroke="#ed7100" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <text class="lbl" x="474" y="99" font-size="14" font-weight="700">AWS Cloud</text>
+
+    <!-- region -->
+    <rect x="460" y="120" width="590" height="530" rx="8" fill="none" stroke="var(--region)" stroke-width="1.4" stroke-dasharray="6 5"/>
+    <circle cx="480" cy="145" r="6" fill="none" stroke="var(--region)" stroke-width="1.6"/>
+    <text class="grp" x="496" y="150" font-size="13" fill="var(--region)">Region &nbsp;us-east-1</text>
+
+    <!-- IAM group -->
+    <rect x="490" y="172" width="540" height="205" rx="8" fill="none" stroke="var(--group)" stroke-width="1.3" stroke-dasharray="5 4"/>
+    <text class="grp" x="512" y="196" font-size="13">AWS IAM &nbsp;&middot;&nbsp; passwordless trust</text>
+
+    <!-- OIDC provider -->
+    <rect x="512" y="210" width="60" height="60" rx="10" fill="url(#gIam)"/>
+    <path class="glyph" d="M542 224 l14 5 v9 c0 9 -7 15 -14 18 c-7 -3 -14 -9 -14 -18 v-9 z"/>
+    <path class="gline" d="M535 240 l5 5 l9 -10" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke="#c21f3a"/>
+    <text class="cap" x="586" y="234" font-size="13">OIDC identity provider</text>
+    <text class="sub" x="586" y="252" font-size="11">trusts token.actions.githubusercontent.com</text>
+
+    <!-- IAM role -->
+    <rect x="512" y="296" width="60" height="60" rx="10" fill="url(#gIam)"/>
+    <circle class="gline" cx="536" cy="322" r="8" stroke-width="2.6"/>
+    <path class="gline" d="M542 328 l14 14 M552 338 l5 -5 M556 342 l5 -5" stroke-width="2.6" stroke-linecap="round"/>
+    <text class="cap" x="586" y="320" font-size="13">IAM Role: github-actions-ecr-push</text>
+    <text class="sub" x="586" y="338" font-size="11">may push to llm-app only (least privilege)</text>
+
+    <!-- ECR group -->
+    <rect x="490" y="400" width="540" height="110" rx="8" fill="none" stroke="var(--group)" stroke-width="1.3" stroke-dasharray="5 4"/>
+    <text class="grp" x="512" y="424" font-size="13">Amazon Elastic Container Registry</text>
+
+    <rect x="512" y="434" width="60" height="60" rx="10" fill="url(#gEcr)"/>
+    <rect class="gline" x="527" y="446" width="30" height="8" rx="2" stroke-width="1.8"/>
+    <rect class="gline" x="527" y="459" width="30" height="8" rx="2" stroke-width="1.8"/>
+    <rect class="gline" x="527" y="472" width="30" height="8" rx="2" stroke-width="1.8"/>
+    <text class="cap" x="586" y="458" font-size="13">Repository: llm-app</text>
+    <text class="sub" x="586" y="476" font-size="11">1 image &middot; tag = git SHA &middot; immutable &middot; scan on push</text>
+
+    <!-- EKS coming -->
+    <rect x="490" y="536" width="540" height="86" rx="8" fill="none" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="3 5"/>
+    <polygon points="547,551 566,558 570,578 558,594 536,594 524,578 528,558"
+             fill="none" stroke="var(--faint)" stroke-width="1.6"/>
+    <circle cx="547" cy="573" r="3" fill="var(--faint)"/>
+    <text class="lbl" x="586" y="570" font-size="13" fill="var(--faint)" font-weight="600">Amazon EKS</text>
+    <text class="sub" x="586" y="588" font-size="11" fill="var(--faint)">Stage 4 &mdash; not yet created (costs money)</text>
+
+    <!-- ============ cross-boundary flows ============ -->
+    <!-- 1: actions -> IAM -->
+    <path class="flow" d="M214 405 C 340 380, 400 320, 486 300" fill="none" stroke-width="2" marker-end="url(#ar--head)"/>
+    <circle cx="360" cy="349" r="11" fill="url(#gIam)"/>
+    <text class="fnum" x="360" y="353" font-size="12" text-anchor="middle">1</text>
+    <text class="sub" x="376" y="342" font-size="10.5">OIDC token (aud, sub) &rarr; assume role</text>
+    <!-- creds back (dashed) -->
+    <path class="flowd" d="M486 330 C 400 360, 320 420, 214 428" fill="none" stroke-width="1.6" marker-end="url(#ar--headd)"/>
+    <text class="sub" x="300" y="418" font-size="10.5" fill="var(--faint)">temp credentials (~1h)</text>
+
+    <!-- 2: actions -> ECR -->
+    <path class="flow" d="M214 440 C 360 470, 420 470, 508 466" fill="none" stroke-width="2" marker-end="url(#ar--head)"/>
+    <circle cx="360" cy="465" r="11" fill="url(#gEcr)"/>
+    <text class="fnum" x="360" y="469" font-size="12" text-anchor="middle">2</text>
+    <text class="sub" x="378" y="490" font-size="10.5">docker push llm-app:&lt;sha&gt;</text>
+  </svg>
+  </div>
+
+  <div class="steps">
+    <div class="step"><b>1 · OIDC handshake</b><p>Actions presents a signed token. IAM checks the provider trust and the role's <code>sub</code> condition, then hands back temporary credentials. No stored keys.</p></div>
+    <div class="step"><b>2 · Push to ECR</b><p>With those temp creds, Actions runs <code>docker build</code> and pushes <code>llm-app:&lt;sha&gt;</code> into the private registry.</p></div>
+    <div class="step"><b>Next · Stage 4</b><p>Amazon EKS pulls this image and runs it. It is the first resource that bills hourly, so it goes up and comes down in one sitting.</p></div>
+  </div>
+
+  <p class="foot">learning/kubernetes &middot; region us-east-1 &middot; account 2413…5757 &middot; Stages 1-3 live, $0 while idle</p>
+</div>
